@@ -1,0 +1,92 @@
+import pandas as pd
+fileload=pd.read_csv('p_data.csv')
+print(fileload.index)
+
+fileload['Range']=''
+fileload['Range %']=""
+fileload['0.618']=""
+fileload['1.618']=""
+fileload['Buy Level']=""
+fileload['Sell Level']=""
+fileload['Buy SL']=""
+fileload['Sell SL']=""
+fileload['Buy Target']=""
+fileload['Sell Target']=""
+fileload['Buy Signal']=""
+fileload['Sell Signal']=""
+fileload['Hit Signal Buy']=""
+fileload['Hit Signal Sell']=""
+
+
+for index, row in fileload.iterrows():
+    if fileload.loc[index,"Time"]=="9:15:00":
+        fileload.loc[index,"Range"]=fileload.loc[index,"High"]-fileload.loc[index,"Low"]
+        fileload.loc[index,"Range %"]=((fileload.loc[index,"Range"])/(fileload.loc[index,"Open"]))*100
+        fileload.loc[index,"0.618"]=0.618*fileload.loc[index,"Range"]
+        fileload.loc[index,"1.618"]=1.618*fileload.loc[index,"Range"]
+        if fileload.loc[index,"Range %"]<0.4:
+            SL_margin=fileload.loc[index,"Range %"]*0.1
+            fileload.loc[index,"Buy Level"]=fileload.loc[index,"High"]+(0.618*fileload.loc[index,"Range"])
+            fileload.loc[index,"Buy SL"]=fileload.loc[index,"High"]-SL_margin
+            fileload.loc[index,"Buy Target"]=fileload.loc[index,"High"]+1.618*fileload.loc[index,"Range"]
+            
+            fileload.loc[index,"Sell Level"]=fileload.loc[index,"Low"]-(0.618*fileload.loc[index,"Range"])
+            fileload.loc[index,"Sell SL"]=fileload.loc[index,"Low"]+SL_margin
+            fileload.loc[index,"Sell Target"]=fileload.loc[index,"Low"]-1.618*fileload.loc[index,"Range"]
+            
+            
+a=fileload['Date']
+a=pd.to_datetime(a)
+unique_dates = a.dt.date.unique().tolist()
+
+# fileload['datetime'] = pd.to_datetime(fileload['Date'] + ' ' + fileload['Time'])
+fileload['datetime'] = pd.to_datetime(fileload['Date'] + ' ' + fileload['Time'])
+
+for i in range(len(unique_dates)):
+    filtered_df = fileload[fileload['datetime'].dt.date == pd.to_datetime(unique_dates[i]).date()]
+    comp_buy=0.0
+    comp_sell=0.0
+    for index, row in filtered_df.iterrows():
+        if filtered_df.loc[index,"Time"]=="9:15:00" and fileload.loc[index,"Range %"]<0.4:
+            comp_buy=filtered_df.loc[index,"Buy Level"]
+            comp_sell=filtered_df.loc[index,"Sell Level"]
+            for n_index, n_row in filtered_df.iterrows():
+                #print(filtered_df.loc[n_index,"High"],"   ",comp_buy,"<--High -->Low ", filtered_df.loc[n_index,"Low"],"   ",comp_sell)
+                #print(filtered_df.loc[n_index,"Low"],"   ",comp_sell)
+                
+                if filtered_df.loc[n_index,"High"]>comp_buy:
+                    fileload.loc[n_index,"Buy Signal"]=1
+                    temp=filtered_df.loc[n_index,"High"]
+                    
+                    print("crossed high ===========================crossed at index:",n_index)
+                    break
+            for nw_index, nw_row in filtered_df.iterrows():   
+                if filtered_df.loc[nw_index,"Low"]<comp_sell:
+                    fileload.loc[nw_index,"Sell Signal"]=-1
+                    print("crossed Low===========================crossed at index:",nw_index)
+                    break
+        break          
+                
+        '''      
+        if filtered_df.loc[index,"High"]>comp_buy:
+            #fileload.loc[index,"Buy Signal"]=1
+            
+            #break;
+            print(comp_buy,"  ",filtered_df.loc[index,"High"])
+            print("crossed at index:",index)
+            
+        '''  
+        
+         
+        #print(index)
+        
+    #print("Date Changed =============================>",index+3)
+    
+    fileload.drop('datetime', axis=1, inplace=True)
+resultExcelFile = pd.ExcelWriter('ResultExcelFile.xlsx')
+
+# converting the csv file to an excel file
+fileload.to_excel(resultExcelFile, index=False)
+
+# saving the excel file
+resultExcelFile.save()
